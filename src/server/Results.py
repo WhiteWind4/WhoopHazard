@@ -12,10 +12,45 @@ import RHUtils
 from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import logging
 from time import monotonic
-from Database import RoundType
+from Database import RoundType, Pilot
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus, RacingMode
 
 logger = logging.getLogger(__name__)
+
+
+def filter_leaderboard_pilot_status(leaderboard_result):
+    '''Move disqualified/left pilots to the end of leaderboards.'''
+    if not leaderboard_result:
+        return leaderboard_result
+
+    for key, leaderboard in leaderboard_result.items():
+        if key == 'meta':
+            continue
+        if not isinstance(leaderboard, list):
+            continue
+
+        qualified = []
+        excluded = []
+        for entry in leaderboard:
+            pilot = Pilot.query.get(entry.get('pilot_id'))
+            if pilot and pilot.status in (Pilot.PILOT_STATUS_DISQUALIFIED, Pilot.PILOT_STATUS_LEFT):
+                excluded.append(entry)
+            else:
+                qualified.append(entry)
+
+        if not excluded:
+            continue
+
+        for i, entry in enumerate(qualified):
+            entry['position'] = i + 1
+
+        start_pos = len(qualified) + 1
+        for i, entry in enumerate(excluded):
+            entry['position'] = start_pos + i
+
+        leaderboard_result[key] = qualified + excluded
+
+    return leaderboard_result
 
 from FlaskAppObj import APP
 APP.app_context().push()

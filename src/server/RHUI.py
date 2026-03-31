@@ -1551,6 +1551,7 @@ class RHUI():
                 'phonetic': pilot.phonetic,
                 'name': pilot.name,
                 'active': pilot.active,
+                'status': pilot.status,
                 'team_options': opts_str,
                 'color': pilot.color,
                 'locked': locked,

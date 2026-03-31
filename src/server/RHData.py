@@ -545,7 +545,8 @@ class RHData():
                             'team': RHUtils.DEF_TEAM_NAME,
                             'phonetic': '',
                             'color': None,
-                            'used_frequencies': None
+                            'used_frequencies': None,
+                            'status': 0,
                         })
                     for pilot in Database.Pilot.query.all():
                         if not pilot.color:
@@ -894,6 +895,14 @@ class RHData():
                     return pilot
         return None
 
+    def is_pilot_excluded(self, pilot_id):
+        '''Check if pilot is disqualified or left competition.'''
+        pilot = self.get_pilot(pilot_id)
+        if pilot is None:
+            return False
+        return pilot.status in (Database.Pilot.PILOT_STATUS_DISQUALIFIED,
+                                Database.Pilot.PILOT_STATUS_LEFT)
+
     def add_pilot(self, init=None):
         color = RHUtils.hslToHex(False, 100, 50)
 
@@ -956,6 +965,8 @@ class RHData():
             pilot.name = data['name']
         if 'color' in data:
             pilot.color = data['color']
+        if 'status' in data:
+            pilot.status = int(data['status'])
 
         if 'pilot_attr' in data and 'value' in data:
             data['pilot_attr'] = self._filters.run_filters(Flt.PILOT_ALTER_ATTRIBUTE, data['pilot_attr'], {
@@ -983,6 +994,13 @@ class RHData():
         logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
 
         race_list = []
+        if 'status' in data:
+            # status change affects all leaderboards — invalidate everything
+            self.clear_results_raceClasses()
+            self.clear_results_heats()
+            self.clear_results_event()
+            self._racecontext.pagecache.set_valid(False)
+
         if 'callsign' in data or 'team_name' in data:
             heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
             if heatnodes:

@@ -1108,6 +1108,7 @@ var rotorhazard = {
 	display_chan_freq: true, //shows node channel and frequency (Current Race page only)
 	hide_graphs: false, //hides RSSI graphs on Run page
 	display_late_laps_cur: false, //shows "late" laps on Current Race page
+	delete_with_timeout: false, //enables 3-second countdown before lap deletion
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -1188,7 +1189,8 @@ var rotorhazard = {
 		{ name: 'rotorhazard.display_time_first_pass', getVal: function() {return rotorhazard.display_time_first_pass;}, setVal: function(val) {rotorhazard.display_time_first_pass = parseJsonStr(val);}, isAudio: false },
 		{ name: 'rotorhazard.display_laps_reversed', getVal: function() {return rotorhazard.display_laps_reversed;}, setVal: function(val) {rotorhazard.display_laps_reversed = parseJsonStr(val);}, isAudio: false },
 		{ name: 'rotorhazard.display_chan_freq', getVal: function() {return rotorhazard.display_chan_freq;}, setVal: function(val) {rotorhazard.display_chan_freq = parseJsonStr(val);}, isAudio: false },
-		{ name: 'rotorhazard.display_late_laps_cur', getVal: function() {return rotorhazard.display_late_laps_cur;}, setVal: function(val) {rotorhazard.display_late_laps_cur = parseIntOrBoolean(val);}, isAudio: false }
+		{ name: 'rotorhazard.display_late_laps_cur', getVal: function() {return rotorhazard.display_late_laps_cur;}, setVal: function(val) {rotorhazard.display_late_laps_cur = parseIntOrBoolean(val);}, isAudio: false },
+		{ name: 'rotorhazard.delete_with_timeout', getVal: function() {return rotorhazard.delete_with_timeout;}, setVal: function(val) {rotorhazard.delete_with_timeout = parseJsonStr(val);}, isAudio: false }
 	],
 	saveData: function() {
 		if (!supportsLocalStorage()) {
@@ -1766,6 +1768,23 @@ jQuery(document).ready(function($){
 });
 }
 
+/* Pilot status marks */
+var PILOT_STATUS_NORMAL = 0;
+var PILOT_STATUS_REMARK = 1;
+var PILOT_STATUS_DISQUALIFIED = 2;
+var PILOT_STATUS_LEFT = 3;
+
+function get_pilot_mark(pilot_id) {
+	var pilots = rotorhazard.pilot_data ?? rotorhazard.event?.pilots;
+	if (!pilots) return '';
+	var pilot = pilots.filter(function(p) { return p.pilot_id === pilot_id; })[0];
+	if (!pilot || !pilot.status) return '';
+	if (pilot.status == PILOT_STATUS_REMARK) return '<span class="pilot-mark pilot-remark" title="' + __('Remark') + '"></span>';
+	if (pilot.status == PILOT_STATUS_DISQUALIFIED) return '<span class="pilot-mark pilot-disqualified" title="' + __('Disqualified') + '"></span>';
+	if (pilot.status == PILOT_STATUS_LEFT) return '<span class="pilot-mark pilot-left" title="' + __('Left competition') + '"></span>';
+	return '';
+}
+
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type, meta, display_starts=false) {
 	if (typeof(display_type) === 'undefined')
@@ -1840,7 +1859,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		var row = $('<tr>');
 
 		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
-		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
+		row.append('<td class="pilot">'+ get_pilot_mark(leaderboard[i].pilot_id) + leaderboard[i].callsign +'</td>');
 		if (meta.team_racing_mode == RACING_MODE_TEAM) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}
@@ -2060,7 +2079,7 @@ function build_ranking(ranking) {
 		var row = $('<tr>');
 
 		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
-		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
+		row.append('<td class="pilot">'+ get_pilot_mark(leaderboard[i].pilot_id) + leaderboard[i].callsign +'</td>');
 		if ('team_racing_mode' in meta && meta.team_racing_mode == RACING_MODE_TEAM) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}

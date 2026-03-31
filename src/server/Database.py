@@ -47,6 +47,12 @@ class Pilot(Base):
     color = DB.Column(DB.String(7), nullable=True)
     used_frequencies = DB.Column(DB.String, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
+    status = DB.Column(DB.Integer, nullable=False, default=0)  # 0=normal, 1=remark, 2=disqualified, 3=left
+
+    PILOT_STATUS_NORMAL = 0
+    PILOT_STATUS_REMARK = 1
+    PILOT_STATUS_DISQUALIFIED = 2
+    PILOT_STATUS_LEFT = 3
 
     @property
     def display_callsign(self):

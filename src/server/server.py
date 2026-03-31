@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.4.0" # Public release version code
-SERVER_API = 50 # Server API version
+SERVER_API = 51 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -184,7 +184,7 @@ from interface_mapper import InterfaceMapper, InterfaceType
 from eventmanager import Evt, EventManager
 
 # Filter manager
-from filtermanager import FilterManager
+from filtermanager import FilterManager, Flt
 
 # Plugin manager
 import requests
@@ -225,6 +225,14 @@ Events = EventManager(RaceContext)
 RaceContext.events = Events
 Filters = FilterManager(RHAPI)
 RaceContext.filters = Filters
+
+# Built-in leaderboard filter: move DQ/left pilots to bottom
+from Results import filter_leaderboard_pilot_status
+for flt_type in (Flt.LEADERBOARD_BUILD_RACE, Flt.LEADERBOARD_BUILD_HEAT,
+                 Flt.LEADERBOARD_BUILD_CLASS, Flt.LEADERBOARD_BUILD_EVENT,
+                 Flt.LEADERBOARD_BUILD_INCREMENTAL):
+    Filters.add_filter(flt_type, 'pilot_status_reorder', filter_leaderboard_pilot_status, priority=150)
+
 EventActionsObj = None
 LedStripObj = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
@@ -1338,8 +1346,23 @@ def on_alter_pilot(data):
             RaceContext.rhui.emit_result_data() # live update rounds page
     if 'phonetic' in data:
         RaceContext.rhui.emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
+    if 'status' in data:
+        RaceContext.rhui.emit_result_data()
 
     RaceContext.race.clear_results() # refresh current leaderboard
+
+@SOCKET_IO.on('set_pilot_status')
+@catchLogExcWithDBWrapper
+def on_set_pilot_status(data):
+    '''Quick-set pilot status (remark/disqualified/left).'''
+    RaceContext.rhdata.alter_pilot({
+        'pilot_id': data['pilot_id'],
+        'status': data['status']
+    })
+    RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
+    RaceContext.rhui.emit_result_data()
+    RaceContext.race.clear_results()
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExcWithDBWrapper

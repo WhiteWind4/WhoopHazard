@@ -2581,6 +2581,15 @@
 						el.append(phonetic);
 						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
 
+						var statusSelect = '<div class="pilot-status"><label for="set_pilot_status_' + pilot.pilot_id + '">' + __('Status') + '</label>' +
+							'<select class="set_pilot_status" id="set_pilot_status_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' +
+							'<option value="0"' + (pilot.status == 0 ? ' selected' : '') + '>' + __('Normal') + '</option>' +
+							'<option value="1"' + (pilot.status == 1 ? ' selected' : '') + '>' + __('Remark') + '</option>' +
+							'<option value="2"' + (pilot.status == 2 ? ' selected' : '') + '>' + __('Disqualified') + '</option>' +
+							'<option value="3"' + (pilot.status == 3 ? ' selected' : '') + '>' + __('Left competition') + '</option>' +
+							'</select></div>';
+						el.append(statusSelect);
+
 						if (!pilot.locked) {
 							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215; </button>');
 						}
@@ -2698,6 +2707,14 @@
 
 		$(document).on("focus", '.set_pilot_attr', function(){
 			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_status', function (event) {
+			var pilot_id = parseInt($(this).data('pilot_id'));
+			var status = parseInt($(this).val());
+			socket.emit('set_pilot_status', {pilot_id: pilot_id, status: status});
+			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+			pilot.status = status;
 		});
 
 		$(document).on("change", '.set_pilot_attr', function (event) {

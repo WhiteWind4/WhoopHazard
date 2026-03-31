@@ -212,6 +212,7 @@
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
+		$('#delete_with_timeout').prop("checked", rotorhazard.delete_with_timeout);
 
 		if ('{{ getConfig('LED', 'ledBrightness') }}' != 'False') {
 			$('#set_led_brightness').val(brightness_logsl.position( {{ getConfig('LED', 'ledBrightness') }} ));
@@ -1365,12 +1366,49 @@
 			// }
 		});
 
+		var pendingDeletes = {};
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
-			var data = {
-				node: parseInt($(this).data('node')),
-				lap_index: parseInt($(this).data('lap-index')),
-			};
-			socket.emit('delete_lap', data);
+			var btn = $(this);
+			var node = parseInt(btn.data('node'));
+			var lap_index = parseInt(btn.data('lap-index'));
+			var key = node + ':' + lap_index;
+
+			if (!rotorhazard.delete_with_timeout) {
+				socket.emit('delete_lap', {node: node, lap_index: lap_index});
+				return;
+			}
+
+			// If already pending, cancel
+			if (pendingDeletes[key]) {
+				clearTimeout(pendingDeletes[key].timeoutId);
+				clearInterval(pendingDeletes[key].countdownInterval);
+				btn.text('\u00D7').removeClass('lap-delete-pending');
+				btn.closest('tr').removeClass('lap-delete-pending-row');
+				delete pendingDeletes[key];
+				return;
+			}
+
+			// Start countdown
+			var secondsLeft = 3;
+			btn.text(secondsLeft).addClass('lap-delete-pending');
+			btn.closest('tr').addClass('lap-delete-pending-row');
+
+			var countdownInterval = setInterval(function() {
+				secondsLeft--;
+				if (secondsLeft > 0) {
+					btn.text(secondsLeft);
+				} else {
+					clearInterval(countdownInterval);
+				}
+			}, 1000);
+
+			var timeoutId = setTimeout(function() {
+				clearInterval(countdownInterval);
+				delete pendingDeletes[key];
+				socket.emit('delete_lap', {node: node, lap_index: lap_index});
+			}, 3000);
+
+			pendingDeletes[key] = {timeoutId: timeoutId, countdownInterval: countdownInterval};
 		});
 
 		$(document).on("click", ".restore_deleted_lap", function (event) { // Needed for buttons added after document load
@@ -1669,6 +1707,10 @@
 			show_current_laps();
 		});
 
+		$('#delete_with_timeout').change(function (event) {
+			rotorhazard.delete_with_timeout = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
 
 		/* Race Format */
 
@@ -3380,6 +3422,14 @@
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Lap Actions') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="delete_with_timeout"> {{ __('Delete laps with 3s timeout') }}</label></li>
 				</ul>
 			</li>
 			<li>
