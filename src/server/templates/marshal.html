@@ -58,6 +58,12 @@
 			} else if (lap_index && lap.lap_time < min_lap_ms) {
 				lapData.addClass('min-lap-warning');
 			}
+			if (lap.out_of_score) {
+				lapData.addClass('lap-out-of-score');
+			}
+			if (lap.need_review) {
+				lapData.addClass('lap-need-review');
+			}
 
 			if (!lap.deleted) {
 				marshal.drawLap(lap, true);
@@ -92,11 +98,21 @@
 
 			lapData.append('<td>' + lap.peak_rssi + '</td>');
 
-			if (lap.deleted) {
-				lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
+			var actionsCell = $('<td class="lap-actions">');
+			if (!lap.deleted) {
+				actionsCell.append(
+					$('<button class="toggle_out_of_score btn-warning' + (lap.out_of_score ? ' active' : '') + '" data-lapid="' + lap_i + '" title="' + __('Out of Score') + '">&#9888;</button>')
+				).append(
+					$('<button class="toggle_need_review btn-warning' + (lap.need_review ? ' active' : '') + '" data-lapid="' + lap_i + '" title="' + __('Need Review') + '">?</button>')
+				).append(
+					$('<button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button>')
+				);
 			} else {
-				lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
+				actionsCell.append(
+					$('<button class="restore_lap" data-lapid="' + lap_i + '">+</button>')
+				);
 			}
+			lapData.append(actionsCell);
 
 			if (!marshal.race.race_format.unlimited_time && lap.lap_time_stamp > (marshal.race.race_format.race_time_sec * 1000)) {
 				lapData.addClass('after-time-expired');
@@ -120,6 +136,19 @@
 			marshal.renderGraph();
 		});
 	}
+
+	$(document).on('click', '.toggle_out_of_score', function(e) {
+		e.stopPropagation();
+		var lapId = parseInt($(this).data('lapid'));
+		marshal.race.laps[lapId].out_of_score = !marshal.race.laps[lapId].out_of_score;
+		marshal.displayLaps();
+	});
+	$(document).on('click', '.toggle_need_review', function(e) {
+		e.stopPropagation();
+		var lapId = parseInt($(this).data('lapid'));
+		marshal.race.laps[lapId].need_review = !marshal.race.laps[lapId].need_review;
+		marshal.displayLaps();
+	});
 
 	function calcLaps(isLoaded) {
 		// invalidate current laps
@@ -729,7 +758,7 @@
 						<th>{{ __('Lap Time') }}</th>
 						<th>{{ __('Source') }}</th>
 						<th>{{ __('Peak') }}</th>
-						<th>{{ __('Deleted') }}</th>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody></tbody>

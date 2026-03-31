@@ -136,7 +136,9 @@ class PageCache:
                                     'lap_time': lap.lap_time,
                                     'lap_time_formatted': lap.lap_time_formatted,
                                     'source': lap.source,
-                                    'deleted': lap.deleted
+                                    'deleted': lap.deleted,
+                                    'out_of_score': lap.out_of_score,
+                                    'need_review': lap.need_review,
                                 })
 
                             pilot_data = self._racecontext.rhdata.get_pilot(pilotrace.pilot_id)

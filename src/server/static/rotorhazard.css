@@ -1998,6 +1998,108 @@ ol.heat-edit-list>li {
 	}
 }
 
+.lap-out-of-score {
+	text-decoration: line-through;
+	opacity: 0.5;
+	background: rgba(255, 170, 170, 0.2);
+}
+
+.lap-need-review {
+	background: rgba(255, 221, 119, 0.3);
+}
+
+.lap-out-of-score.lap-need-review {
+	text-decoration: line-through;
+	opacity: 0.5;
+	background: rgba(255, 200, 130, 0.25);
+}
+
+.lap-delete-pending {
+	animation: lap-delete-blink 0.5s ease-in-out infinite alternate;
+}
+
+.lap-delete-pending-row {
+	opacity: 0.4 !important;
+}
+
+@keyframes lap-delete-blink {
+	from { opacity: 1; }
+	to { opacity: 0.4; }
+}
+
+.lap-actions {
+	white-space: nowrap;
+}
+.toggle_out_of_score,
+.toggle_need_review,
+.delete_lap,
+.restore_lap,
+.m-toggle_out_of_score,
+.m-toggle_need_review,
+.m-delete_lap,
+.m-restore_lap {
+	width: 2em;
+	min-width: 0;
+	padding-left: 0;
+	padding-right: 0;
+	text-align: center;
+	box-sizing: border-box;
+	cursor: pointer;
+}
+
+.toggle_out_of_score.active,
+.toggle_need_review.active {
+	border-color: #666;
+}
+
+.lap-review-icon,
+.lap-oos-icon {
+	font-size: 0.9em;
+	margin-left: 0.25em;
+	cursor: help;
+	text-decoration: none;
+	display: inline-block;
+}
+
+.lap-review-icon {
+	color: #cc8800;
+}
+
+.lap-oos-icon {
+	color: #cc4400;
+}
+
+.hide-lap-annotations .lap-review-icon,
+.hide-lap-annotations .lap-oos-icon {
+	display: none;
+}
+
+.hide-lap-annotations .lap-out-of-score {
+	text-decoration: none;
+	opacity: 1;
+	background: none;
+}
+
+.hide-lap-annotations .lap-need-review {
+	background: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	.lap-out-of-score {
+		background: rgba(255, 100, 100, 0.15);
+	}
+	.lap-need-review {
+		background: rgba(255, 200, 50, 0.15);
+	}
+	.lap-out-of-score.lap-need-review {
+		background: rgba(255, 150, 75, 0.15);
+	}
+	.toggle_out_of_score.active,
+	.toggle_need_review.active {
+		border-color: #999;
+	}
+}
+
 @media (prefers-color-scheme: dark) {
 	.lap_split {
 		color: #999;

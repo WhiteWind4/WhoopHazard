@@ -36,6 +36,8 @@ class Crossing(dict):
     late_lap: bool = False
     invalid: bool = False
     peak_rssi: int|None = None
+    out_of_score: bool = False
+    need_review: bool = False
     def __bool__(self):
         return True  # always evaluate object as 'True', even if underlying dict is empty
     def asdict(self):
@@ -1235,6 +1237,8 @@ class RHRace():
             lap_data.lap_time_formatted = tmp_lap_time_formatted
             lap_data.source = lap['source']
             lap_data.deleted = lap['deleted']
+            lap_data.out_of_score = lap.get('out_of_score', False)
+            lap_data.need_review = lap.get('need_review', False)
             if not lap_data.deleted:
                 lap_number += 1
             lap_objs.append(lap_data)
@@ -1630,6 +1634,14 @@ class RHRace():
                                 (lap.deleted == False or lap.late_lap), self.node_laps[node_index]))
         return filtered
 
+    def get_scoring_laps(self, late_lap_flag=False):
+        # return active laps excluding out_of_score (for leaderboard calculations)
+        active = self.get_active_laps(late_lap_flag)
+        filtered = {}
+        for node_index in active:
+            filtered[node_index] = [lap for lap in active[node_index] if not lap.out_of_score]
+        return filtered
+
     def any_laps_recorded(self):
         for node_index in range(self.num_nodes):
             if len(self.node_laps[node_index]) > 0:
@@ -1668,7 +1680,9 @@ class RHRace():
                         'source': lap.source,
                         'deleted': lap.deleted,
                         'splits': splits,
-                        'late_lap': lap.late_lap
+                        'late_lap': lap.late_lap,
+                        'out_of_score': lap.out_of_score,
+                        'need_review': lap.need_review,
                     })
 
             pilot_data = None

@@ -355,8 +355,12 @@ def _do_calc_leaderboard(racecontext, **params):
             crossings = []
             laps = []
 
+            active_laps = []
+            if node_index < raceObj.num_nodes and len(raceObj.get_scoring_laps()):
+                crossings = raceObj.get_scoring_laps()[node_index]
+
             if node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
-                crossings = raceObj.get_active_laps()[node_index]
+                active_laps = raceObj.get_active_laps()[node_index]
 
             if crossings:
                 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
@@ -383,6 +387,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     'node': node_index,
                     'pilot_crossings': crossings,
                     'pilot_laps': laps,
+                    'pilot_active_laps': active_laps,
                 })
     elif USE_CURRENT:
         for pilot in rhDataObj.get_pilots():
@@ -391,9 +396,12 @@ def _do_calc_leaderboard(racecontext, **params):
             node_index = 0
             crossings = []
             laps = []
+            active_laps = []
             for node_index in raceObj.node_pilots:
-                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
-                    crossings = raceObj.get_active_laps()[node_index]
+                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_scoring_laps()):
+                    crossings = raceObj.get_scoring_laps()[node_index]
+                    if len(raceObj.get_active_laps()):
+                        active_laps = raceObj.get_active_laps()[node_index]
                     found_pilot = True
                     break
 
@@ -417,6 +425,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     'node': node_index,
                     'pilot_crossings': crossings,
                     'pilot_laps': laps,
+                    'pilot_active_laps': active_laps,
                 })
     else:
         for pilot_race in racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(raceObj.id):
@@ -425,7 +434,8 @@ def _do_calc_leaderboard(racecontext, **params):
                 pilot_laps = []
                 total_laps = 0
 
-                race_crossings = racecontext.rhdata.get_active_savedRaceLaps_by_savedPilotRace(pilot_race.id)
+                race_crossings = racecontext.rhdata.get_scoring_savedRaceLaps_by_savedPilotRace(pilot_race.id)
+                active_crossings = racecontext.rhdata.get_active_savedRaceLaps_by_savedPilotRace(pilot_race.id)
                 total_laps += len(race_crossings)
 
                 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
@@ -446,6 +456,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     'node': pilot_race.node_index,
                     'pilot_crossings': race_crossings,
                     'pilot_laps': pilot_laps,
+                    'pilot_active_laps': active_crossings,
                 })
 
     do_gevent_sleep()
@@ -512,17 +523,42 @@ def _do_calc_leaderboard(racecontext, **params):
                 do_gevent_sleep(0)
 
             # find best consecutive X laps
+            # OOS laps break consecutive chains
             all_consecutives = []
 
-            if result_pilot['laps'] >= consecutivesCount:
-                for i in range(result_pilot['laps'] - (consecutivesCount - 1)):
-                    do_gevent_sleep(0)
-                    all_consecutives.append({
-                        'laps': consecutivesCount,
-                        'time': sum([data.lap_time for data in result_pilot['pilot_laps'][i : i + consecutivesCount]]),
-                        'lap_index': i+1
-                    })
-            else:
+            active_laps = result_pilot.get('pilot_active_laps', [])
+            if active_laps:
+                # Build segments of scoring laps split by OOS
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    active_iter = active_laps
+                else:
+                    active_iter = active_laps[1:] if len(active_laps) else []
+
+                segments = []
+                current_segment = []
+                for lap in active_iter:
+                    if lap.out_of_score:
+                        if current_segment:
+                            segments.append(current_segment)
+                            current_segment = []
+                    else:
+                        current_segment.append(lap)
+                if current_segment:
+                    segments.append(current_segment)
+
+                scoring_lap_offset = 0
+                for segment in segments:
+                    if len(segment) >= consecutivesCount:
+                        for i in range(len(segment) - (consecutivesCount - 1)):
+                            do_gevent_sleep(0)
+                            all_consecutives.append({
+                                'laps': consecutivesCount,
+                                'time': sum([data.lap_time for data in segment[i : i + consecutivesCount]]),
+                                'lap_index': scoring_lap_offset + i + 1
+                            })
+                    scoring_lap_offset += len(segment)
+
+            if not all_consecutives:
                 all_consecutives.append({
                     'laps': result_pilot['laps'],
                     'time': result_pilot['total_time_laps'],
@@ -558,6 +594,7 @@ def _do_calc_leaderboard(racecontext, **params):
         # Clean up interim data
         result_pilot.pop('pilot_crossings')
         result_pilot.pop('pilot_laps')
+        result_pilot.pop('pilot_active_laps', None)
 
         # shift output keys
         result_pilot['total_time_raw'] = result_pilot['total_time']

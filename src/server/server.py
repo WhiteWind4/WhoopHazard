@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.4.0" # Public release version code
-SERVER_API = 49 # Server API version
+SERVER_API = 50 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2410,7 +2410,9 @@ def on_resave_laps(data):
             'lap_time_formatted': tmp_lap_time_formatted,
             'peak_rssi': lap.get('peak_rssi', None),
             'source': lap['source'],
-            'deleted': lap['deleted']
+            'deleted': lap['deleted'],
+            'out_of_score': lap.get('out_of_score', False),
+            'need_review': lap.get('need_review', False),
             })
 
     RaceContext.rhdata.replace_savedRaceLaps(new_racedata)
@@ -2437,6 +2439,8 @@ def on_resave_laps(data):
             lap_data.lap_time_formatted = lap['lap_time_formatted']
             lap_data.source = lap['source']
             lap_data.deleted = lap['deleted']
+            lap_data.out_of_score = lap.get('out_of_score', False)
+            lap_data.need_review = lap.get('need_review', False)
             if not lap_data.deleted:
                 lap_number += 1
             lap_objs.append(lap_data)
@@ -2529,6 +2533,21 @@ def on_delete_lap(data):
 def on_restore_deleted_lap(data):
     RaceContext.race.restore_deleted_lap(data)
 
+@SOCKET_IO.on('set_lap_annotation')
+@catchLogExcWithDBWrapper
+def on_set_lap_annotation(data):
+    node_index = data['node']
+    lap_index = data['lap_index']
+    field = data.get('field')
+    value = bool(data.get('value', False))
+    if field not in ('out_of_score', 'need_review'):
+        return
+    if node_index in RaceContext.race.node_laps and \
+       lap_index < len(RaceContext.race.node_laps[node_index]):
+        setattr(RaceContext.race.node_laps[node_index][lap_index], field, value)
+        RaceContext.race.clear_results()
+        RaceContext.rhui.emit_current_laps()
+        RaceContext.rhui.emit_current_leaderboard()
 
 @SOCKET_IO.on('simulate_lap')
 @catchLogExcWithDBWrapper
@@ -2697,7 +2716,9 @@ def get_pilotrace(data):
                         'lap_time_formatted': lap.lap_time_formatted,
                         'source': lap.source,
                         'deleted': lap.deleted,
-                        'peak_rssi': lap.peak_rssi
+                        'peak_rssi': lap.peak_rssi,
+                        'out_of_score': lap.out_of_score,
+                        'need_review': lap.need_review,
                     })
 
             pilot_data = RaceContext.rhdata.get_pilot(pilotrace.pilot_id)

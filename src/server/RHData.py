@@ -816,7 +816,9 @@ class RHData():
 
                         self.restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
                             'source': None,
-                            'deleted': False
+                            'deleted': False,
+                            'out_of_score': False,
+                            'need_review': False,
                         })
 
                         self.restore_table(Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
@@ -3457,6 +3459,13 @@ class RHData():
     def get_active_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
         return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1, Database.SavedRaceLap.pilotrace_id == pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
 
+    def get_scoring_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
+        return Database.SavedRaceLap.query.filter(
+            Database.SavedRaceLap.deleted != 1,
+            Database.SavedRaceLap.out_of_score != 1,
+            Database.SavedRaceLap.pilotrace_id == pilotrace_id
+        ).order_by(Database.SavedRaceLap.lap_time_stamp).all()
+
     # Race general
     def replace_savedRaceLaps(self, data):
         Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()
@@ -3472,7 +3481,9 @@ class RHData():
                 lap_time_formatted=lap['lap_time_formatted'],
                 peak_rssi = lap['peak_rssi'],
                 source = lap['source'],
-                deleted = lap['deleted']
+                deleted = lap['deleted'],
+                out_of_score = lap.get('out_of_score', False),
+                need_review = lap.get('need_review', False),
             ))
 
         self.commit()
@@ -3509,7 +3520,9 @@ class RHData():
                     lap_time_formatted=lap.lap_time_formatted,
                     source=lap.source,
                     deleted=lap.deleted,
-                    peak_rssi=lap.peak_rssi
+                    peak_rssi=lap.peak_rssi,
+                    out_of_score=lap.out_of_score,
+                    need_review=lap.need_review,
                 ))
 
         self.commit()

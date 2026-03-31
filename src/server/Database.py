@@ -362,6 +362,8 @@ class SavedRaceLap(Base):
     source = DB.Column(DB.Integer, nullable=False)
     deleted = DB.Column(DB.Boolean, nullable=False)
     peak_rssi = DB.Column(DB.Integer, nullable=True)
+    out_of_score = DB.Column(DB.Boolean, nullable=False, default=False)
+    need_review = DB.Column(DB.Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id

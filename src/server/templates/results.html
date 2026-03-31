@@ -15,6 +15,9 @@
 	];
 
 	$(document).ready(function () {
+		// Lap annotation display setting
+		rotorhazard.show_lap_annotations = localStorage.getItem('show_lap_annotations') !== 'false';
+
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -311,17 +314,24 @@
 											for (var lap_i in node.laps) {
 												var lap = node.laps[lap_i];
 												if (!lap.deleted) {
+													var review_icon = '';
+													if (lap.need_review) review_icon += ' <span class="lap-review-icon" title="' + __('Need Review') + '">?</span>';
+													if (lap.out_of_score) review_icon += ' <span class="lap-oos-icon" title="' + __('Out of Score') + '">&#9888;</span>';
+													var tr_classes = 'lap_' + lap_index;
+													if (lap.out_of_score) tr_classes += ' lap-out-of-score';
+													if (lap.need_review) tr_classes += ' lap-need-review';
+													var lap_display = lap.out_of_score ? '—' : lap_index;
 													if (lap_index) {
 														if ('start_behavior' in round.leaderboard.meta && round.leaderboard.meta.start_behavior == 2) {
 															var timestamp = formatTimeMillis(lap.lap_time_stamp - node.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}) + ' / ' + formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														} else {
 															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														}
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="' + tr_classes + '"><td>' + lap_display + '</td><td><span class="from_start">' + timestamp + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + review_icon + '</td></tr>')
 													} else {
-														tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="' + tr_classes + '"><td>' + lap_display + '</td><td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + review_icon + '</td></tr>')
 													}
-													lap_index++;
+													if (!lap.out_of_score) lap_index++;
 												}
 											}
 
@@ -397,6 +407,18 @@
 		$(document).on("click", '.clean-cache', function (event) {
 			socket.emit('clean_cache');
 		});
+
+		// Lap annotations toggle
+		function applyAnnotationVisibility() {
+			$('#results').toggleClass('hide-lap-annotations', !rotorhazard.show_lap_annotations);
+		}
+		$('#toggle-lap-annotations').prop('checked', rotorhazard.show_lap_annotations);
+		applyAnnotationVisibility();
+		$('#toggle-lap-annotations').on('change', function() {
+			rotorhazard.show_lap_annotations = $(this).is(':checked');
+			localStorage.setItem('show_lap_annotations', rotorhazard.show_lap_annotations);
+			applyAnnotationVisibility();
+		});
 	});
 </script>
 <main class="page-rounds">
@@ -405,6 +427,13 @@
 	<h1>{{ __('Results') }}: {{ getOption('eventName') }}</h1>
 	<div id="description">
 		<p class="form-note">{{ __('Loading...') }}</p>
+	</div>
+</div>
+
+<div id="results-settings" class="panel collapsing">
+	<div class="panel-header"><h3><button class="no-style">{{ __('Display Settings') }}</button></h3></div>
+	<div class="panel-content" style="display:none">
+		<label><input type="checkbox" id="toggle-lap-annotations" checked /> {{ __('Show lap annotations') }}</label>
 	</div>
 </div>
 
