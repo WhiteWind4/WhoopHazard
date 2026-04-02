@@ -3207,11 +3207,16 @@ class RHData():
         if heat_races and new_class.round_type == RoundType.GROUPED:
             return False, False
 
+        old_heat_races_pre = Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id).order_by(Database.SavedRaceMeta.round_id).all()
         race_meta.round_id = 0
         dummy_round_counter = -1
         for race in heat_races:
             race.round_id = dummy_round_counter
             dummy_round_counter -= 1
+        for race in old_heat_races_pre:
+            if race.id != race_meta.id:
+                race.round_id = dummy_round_counter
+                dummy_round_counter -= 1
 
         # assign new heat
         race_meta.heat_id = new_heat_id
