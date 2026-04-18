@@ -642,6 +642,8 @@ class RHData():
                         'heat_advance_type': 1,
                         'round_type': 0,
                         'order': None,
+                        'rounds_at_once': 2,
+                        'practice_rounds': 0,
                     })
 
                 # restore heats
@@ -799,7 +801,8 @@ class RHData():
                             '_cache_status': json.dumps({
                                 'data_ver': monotonic(),
                                 'build_ver': None
-                            })
+                            }),
+                            'out_of_score': False,
                         })
                         self.restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
                             'history_values': None,
@@ -1646,6 +1649,14 @@ class RHData():
             if max_round < current_class.rounds:
                 return current_heat.id
 
+        if current_class.heat_advance_type == HeatAdvanceType.EACH_N_ROUNDS:
+            max_round = self.get_max_round(current_heat.id)
+            rounds_at_once = current_class.rounds_at_once or 1
+            batch_complete = (max_round % rounds_at_once == 0)
+            heat_done = (current_class.rounds and max_round >= current_class.rounds)
+            if not batch_complete and not heat_done:
+                return current_heat.id
+
         heats = self.get_heats_by_class(current_heat.class_id)
         heats = [h for h in heats if h.active]
         heats.sort(key=orderSorter)
@@ -1961,7 +1972,9 @@ class RHData():
             rounds=0,
             heat_advance_type=HeatAdvanceType.NEXT_HEAT,
             round_type=RoundType.RACES_PER_HEAT,
-            order=None
+            order=None,
+            rounds_at_once=2,
+            practice_rounds=0
             )
         Database.DB_session.add(new_race_class)
         Database.DB_session.flush()
@@ -1983,6 +1996,10 @@ class RHData():
                 new_race_class.heat_advance_type = init['heat_advance_type']
             if 'round_type' in init:
                 new_race_class.round_type = init['round_type']
+            if 'rounds_at_once' in init:
+                new_race_class.rounds_at_once = init['rounds_at_once']
+            if 'practice_rounds' in init:
+                new_race_class.practice_rounds = init['practice_rounds']
             if 'order' in init:
                 new_race_class.order = init['order']
 
@@ -2031,6 +2048,8 @@ class RHData():
             rounds=source_class.rounds,
             heat_advance_type=source_class.heat_advance_type,
             round_type=source_class.round_type,
+            rounds_at_once=source_class.rounds_at_once,
+            practice_rounds=source_class.practice_rounds,
             order=None
             )
 
@@ -2087,6 +2106,10 @@ class RHData():
             race_class.rounds = int(data['rounds'] or 0)
         if 'heat_advance_type' in data:
             race_class.heat_advance_type = data['heat_advance_type']
+        if 'rounds_at_once' in data:
+            race_class.rounds_at_once = int(data['rounds_at_once'] or 2)
+        if 'practice_rounds' in data:
+            race_class.practice_rounds = int(data['practice_rounds'] or 0)
         if 'round_type' in data:
             race_class.round_type = data['round_type']
         if 'order' in data:
@@ -3138,6 +3161,11 @@ class RHData():
         return bool(Database.SavedRaceMeta.query.filter_by(class_id=class_id).count())
 
     def alter_savedRaceMeta(self, race_id, data):
+        if 'out_of_score' in data:
+            race_meta = Database.SavedRaceMeta.query.get(race_id)
+            if race_meta:
+                race_meta.out_of_score = bool(data['out_of_score'])
+
         if 'race_attr' in data and 'value' in data:
             data['race_attr'] = self._filters.run_filters(Flt.RACE_ALTER_ATTRIBUTE, data['race_attr'], {
                 'race_id': race_id
@@ -3161,6 +3189,7 @@ class RHData():
             format_id=data['format_id'],
             start_time=data['start_time'],
             start_time_formatted=data['start_time_formatted'],
+            out_of_score=data.get('out_of_score', False),
             _cache_status=json.dumps({
                 'data_ver': monotonic(),
                 'build_ver': None

@@ -178,6 +178,8 @@ def import_json(importer_class, rhapi, source, args):
                     'win_condition',
                     'rounds',
                     'heat_advance_type',
+                    'rounds_at_once',
+                    'practice_rounds',
                     'rank_settings'
                     ]:
                     del input_race_class[item]

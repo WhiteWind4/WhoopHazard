@@ -150,6 +150,22 @@
 		marshal.displayLaps();
 	});
 
+	$('#select_race_out_of_score').change(function() {
+		var new_value = $(this).val() === '1';
+		current_race_data.out_of_score = new_value;
+		var heat = parseInt($('#selected_heat').val());
+		var round = parseInt($('#selected_round').val());
+		if (race_list.heats[heat] && race_list.heats[heat].rounds[round]) {
+			race_list.heats[heat].rounds[round].out_of_score = new_value;
+		}
+		socket.emit('set_race_out_of_score', {
+			race_id: current_race_data.race_id,
+			heat_id: current_race_data.heat_id,
+			class_id: current_race_data.class_id,
+			value: new_value
+		});
+	});
+
 	function calcLaps(isLoaded) {
 		// invalidate current laps
 		$('#laps').addClass('invalid');
@@ -586,6 +602,9 @@
 			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
 			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
 			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
+			current_race_data.out_of_score = race_list.heats[heat].rounds[round].out_of_score || false;
+
+			$('#select_race_out_of_score').val(current_race_data.out_of_score ? '1' : '0').show();
 
 			socket.emit('get_pilotrace', {
 				'pilotrace_id': current_race_data.pilotrace_id,
@@ -791,6 +810,12 @@
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Confirm') }}</h3>
+					<select id="select_race_out_of_score" style="display:none">
+						<option value="0">{{ __('Scored') }}</option>
+						<option value="1">{{ __('Not Scored') }}</option>
+					</select>
+				
+				
 					<button id="save-laps" disabled>{{ __('Commit Changes') }}</button>
 					<button id="discard-laps" disabled>{{ __('Discard Changes') }}</button>
 				</div>

@@ -374,6 +374,8 @@
 
 			$('#next-round').text(__("Round") + " " + msg.next_round);
 
+			$('#select_practice').val(msg.is_practice ? '1' : '0');
+
 			switch (msg.race_status) {
 				case 1: // Race running
 					rotorhazard.race_status_go_time = window.performance.now();
@@ -1191,6 +1193,8 @@
 			rotorhazard.current_heatNodes = msg.heatNodes;
 			rotorhazard.current_heat_format = msg.heat_format;
 			rotorhazard.current_heat_next_round = msg.next_round;
+			rotorhazard.current_heat_practice_rounds = msg.practice_rounds || 0;
+			rotorhazard.current_heat_is_practice = msg.is_practice || false;
 			rotorhazard.current_heat_coop_best_time = msg.coop_best_time;
 			rotorhazard.current_heat_coop_num_laps = msg.coop_num_laps;
 			display_heats();
@@ -1226,9 +1230,11 @@
 			if (heat === 0) {
 				$('#practice-warning').show();
 				$('#next-round').hide();
+				$('#select_practice').hide();
 			} else {
 				$('#practice-warning').hide();
 				$('#next-round').text(__("Round") + " " + rotorhazard.current_heat_next_round).show();
+				$('#select_practice').val(rotorhazard.current_heat_is_practice ? '1' : '0').show();
 			}
 		}
 
@@ -1441,6 +1447,10 @@
 				field: 'need_review',
 				value: !isActive
 			});
+		});
+
+		$('#select_practice').change(function (event) {
+			socket.emit('set_practice_flag', { value: $(this).val() === '1' });
 		});
 
 		$('#set_current_heat').change(function (event) {
@@ -3007,6 +3017,10 @@
 			</select>
 
 			<span id="next-round"></span>
+			<select id="select_practice" style="display:none">
+				<option value="0">{{ __('Scored') }}</option>
+				<option value="1">{{ __('Not Scored') }}</option>
+			</select>
 		</div>
 
 		<div id="practice-warning" style="display:none">{{ __('Practice mode: Races will not be saved until a heat is selected') }}</div>

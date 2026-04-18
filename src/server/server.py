@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.4.0" # Public release version code
-SERVER_API = 51 # Server API version
+SERVER_API = 52 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2571,6 +2571,33 @@ def on_set_lap_annotation(data):
         RaceContext.race.clear_results()
         RaceContext.rhui.emit_current_laps()
         RaceContext.rhui.emit_current_leaderboard()
+
+@SOCKET_IO.on('set_race_out_of_score')
+@catchLogExcWithDBWrapper
+def on_set_race_out_of_score(data):
+    '''Toggles out_of_score on a saved race.'''
+    race_id = data.get('race_id')
+    value = bool(data.get('value', False))
+    if race_id:
+        RaceContext.rhdata.alter_savedRaceMeta(race_id, {'out_of_score': value})
+        heat_id = data.get('heat_id')
+        class_id = data.get('class_id')
+        if heat_id:
+            RaceContext.rhdata.clear_results_heat(heat_id)
+        if class_id:
+            RaceContext.rhdata.clear_results_raceClass(class_id)
+        RaceContext.rhdata.clear_results_event()
+        RaceContext.pagecache.set_valid(False)
+        RaceContext.rhui.emit_result_data()
+        RaceContext.rhui.emit_race_list()
+
+@SOCKET_IO.on('set_practice_flag')
+@catchLogExcWithDBWrapper
+def on_set_practice_flag(data):
+    '''Sets practice flag for the current race.'''
+    value = bool(data.get('value', False))
+    RaceContext.race.is_practice = value
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('simulate_lap')
 @catchLogExcWithDBWrapper

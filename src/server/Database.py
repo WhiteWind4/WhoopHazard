@@ -217,6 +217,8 @@ class RaceClass(Base):
     round_type = DB.Column('roundType', DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
+    rounds_at_once = DB.Column('roundsAtOnce', DB.Integer, nullable=False, default=2)
+    practice_rounds = DB.Column('practiceRounds', DB.Integer, nullable=False, default=0)
 
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
@@ -264,6 +266,7 @@ class HeatAdvanceType:
     NONE = 0
     NEXT_HEAT = 1
     NEXT_ROUND = 2
+    EACH_N_ROUNDS = 3
 
 class RoundType:
     RACES_PER_HEAT = 0
@@ -310,6 +313,7 @@ class SavedRaceMeta(Base):
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
     results = DB.Column(DB.PickleType, nullable=True)
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
+    out_of_score = DB.Column(DB.Boolean, nullable=False, default=False)
 
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
@@ -457,7 +461,7 @@ def initialize(db_uri=None):
     if db_uri:
         DB_URI = db_uri
     global DB_engine
-    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW, 
+    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW,
                             connect_args={
                                 'check_same_thread': False,  # Required for SQLite with multiple threads
                                 'timeout': 30,  # Connection timeout in seconds

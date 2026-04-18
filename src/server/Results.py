@@ -830,12 +830,15 @@ def build_leaderboard_heat(racecontext, heat):
     leaderboard = {}
     races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
     for race in races:
+        if race.out_of_score:
+            continue
         race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
         leaderboard = build_incremental(racecontext, race_result, leaderboard, transient=True)
 
-    leaderboard = format_leaderboard_times(racecontext, leaderboard)
-    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
-    leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
+    if leaderboard:
+        leaderboard = format_leaderboard_times(racecontext, leaderboard)
+        leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+        leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
     return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_HEAT, leaderboard, {
         'heat_id': heat.id
@@ -848,9 +851,10 @@ def build_leaderboard_class(racecontext, race_class):
         heat_result = racecontext.rhdata.get_results_heat(heat)
         leaderboard = build_incremental(racecontext, heat_result, leaderboard, transient=True)
 
-    leaderboard = format_leaderboard_times(racecontext, leaderboard)
-    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
-    leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
+    if leaderboard:
+        leaderboard = format_leaderboard_times(racecontext, leaderboard)
+        leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+        leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
     return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_CLASS, leaderboard, {
         'class_id': race_class.id
@@ -868,9 +872,10 @@ def build_leaderboard_event(racecontext):
         heat_result = racecontext.rhdata.get_results_heat(heat)
         leaderboard = build_incremental(racecontext, heat_result, leaderboard, transient=True)
 
-    leaderboard = format_leaderboard_times(racecontext, leaderboard)
-    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
-    leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
+    if leaderboard:
+        leaderboard = format_leaderboard_times(racecontext, leaderboard)
+        leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+        leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
     return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_EVENT, leaderboard)
 

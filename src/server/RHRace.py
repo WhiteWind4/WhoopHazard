@@ -109,6 +109,7 @@ class RHRace():
         self.race_initial_pass_flag = False  # set True after first gate pass of any pilot
 
         self.db_id = None
+        self.is_practice = False  # True if current race should be marked out_of_score
         self._seat_colors = []
         self.external_flag = False # is race data controlled externally (from cluster)
         self.pass_invoke_func_queue_obj = InvokeFuncQueue(logger)
@@ -671,6 +672,7 @@ class RHRace():
                     'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
                     'start_time': self.start_time_monotonic,
                     'start_time_formatted': self.start_time_formatted,
+                    'out_of_score': self.is_practice,
                     }
 
                 new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
@@ -715,25 +717,26 @@ class RHRace():
                     self._racecontext.rhui.emit_heat_data()    # update displayed values
                     self._racecontext.rhui.emit_race_status()
 
-                result = self.get_results()
-                if heat_result:
-                    self._racecontext.rhdata.set_results_heat(heat, token,
-                        Results.build_incremental(self._racecontext, result, heat_result))
-                else:
-                    self._racecontext.rhdata.get_results_heat(self.current_heat)
-
-                if heat.class_id:
-                    if class_result:
-                        self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
-                            Results.build_incremental(self._racecontext, result, class_result))
+                if not self.is_practice:
+                    result = self.get_results()
+                    if heat_result:
+                        self._racecontext.rhdata.set_results_heat(heat, token,
+                            Results.build_incremental(self._racecontext, result, heat_result))
                     else:
-                        self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+                        self._racecontext.rhdata.get_results_heat(self.current_heat)
 
-                if event_result:
-                    self._racecontext.rhdata.set_results_event(token,
-                        Results.build_incremental(self._racecontext, result, event_result))
-                else:
-                    self._racecontext.rhdata.get_results_event()
+                    if heat.class_id:
+                        if class_result:
+                            self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
+                                Results.build_incremental(self._racecontext, result, class_result))
+                        else:
+                            self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+
+                    if event_result:
+                        self._racecontext.rhdata.set_results_event(token,
+                            Results.build_incremental(self._racecontext, result, event_result))
+                    else:
+                        self._racecontext.rhdata.get_results_event()
 
                 self.discard_laps(saved=True) # Also clear the current laps
 
@@ -757,6 +760,19 @@ class RHRace():
 
                 if next_heat is not heat.id:
                     self.set_heat(next_heat)
+                else:
+                    # Heat stayed the same (e.g. EACH_N_ROUNDS batch) — re-evaluate practice flag
+                    if heat.class_id and heat.class_id != RHUtils.CLASS_ID_NONE:
+                        raceclass = self._racecontext.rhdata.get_raceClass(heat.class_id)
+                        if raceclass and raceclass.practice_rounds > 0:
+                            next_round = self._racecontext.rhdata.get_round_num_for_heat(self.current_heat)
+                            self.is_practice = (next_round <= raceclass.practice_rounds)
+                        else:
+                            self.is_practice = False
+                    else:
+                        self.is_practice = False
+                    self._racecontext.rhui.emit_current_heat()
+                    self._racecontext.rhui.emit_race_status()
 
                 # spawn thread for updating results caches
                 gevent.spawn(self.rebuild_page_cache)
@@ -2084,12 +2100,21 @@ class RHRace():
 
                 heat_data = self._racecontext.rhdata.get_heat(new_heat_id)
 
-                if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-                    class_format_id = self._racecontext.rhdata.get_raceClass(heat_data.class_id).format_id
-                    if class_format_id != RHUtils.FORMAT_ID_NONE:
-                        self.format = self._racecontext.rhdata.get_raceFormat(class_format_id)
+                if heat_data.class_id and heat_data.class_id != RHUtils.CLASS_ID_NONE:
+                    race_class = self._racecontext.rhdata.get_raceClass(heat_data.class_id)
+                    if race_class.format_id != RHUtils.FORMAT_ID_NONE:
+                        self.format = self._racecontext.rhdata.get_raceFormat(race_class.format_id)
                         self._racecontext.rhui.emit_current_laps()
                         logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
+
+                    # Auto-detect practice round
+                    if race_class.practice_rounds > 0:
+                        next_round = self._racecontext.rhdata.get_round_num_for_heat(new_heat_id)
+                        self.is_practice = (next_round <= race_class.practice_rounds)
+                    else:
+                        self.is_practice = False
+                else:
+                    self.is_practice = False
 
                 adaptive = bool(self._racecontext.serverconfig.get_item_int('TIMING', 'calibrationMode'))
                 if adaptive:

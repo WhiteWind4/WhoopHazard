@@ -658,6 +658,24 @@
 							.appendTo(field);
 						el.append(field);
 
+						// Practice Rounds
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-practice-rounds');
+						$(document.createElement('label'))
+							.prop('for', `practice-rounds--race-class-${race_class.id}`)
+							.text(__('Practice Rounds'))
+							.appendTo(field);
+						$(document.createElement('input'))
+							.prop('id', `practice-rounds--race-class-${race_class.id}`)
+							.prop('type', 'number')
+							.prop('step', 1)
+							.prop('min', 0)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_practice_rounds')
+							.appendTo(field);
+						el.append(field);
+
 						// Advance type
 						var field = $(document.createElement('div'))
 							.addClass('field')
@@ -671,6 +689,24 @@
 							.data('class_id', race_class.id)
 							.addClass('set_race_class_heat_advance');
 						field.append(field_select);
+						el.append(field);
+
+						// Rounds per Batch
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-rounds-at-once');
+						$(document.createElement('label'))
+							.prop('for', `rounds-at-once--race-class-${race_class.id}`)
+							.text(__('Rounds per Batch'))
+							.appendTo(field);
+						$(document.createElement('input'))
+							.prop('id', `rounds-at-once--race-class-${race_class.id}`)
+							.prop('type', 'number')
+							.prop('step', 1)
+							.prop('min', 1)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_rounds_at_once')
+							.appendTo(field);
 						el.append(field);
 
 						// Order
@@ -861,6 +897,10 @@
 					$(`#rounds--race-class-${race_class.id}`)
 						.val(race_class.rounds)
 
+					// Practice Rounds
+					$(`#practice-rounds--race-class-${race_class.id}`)
+						.val(race_class.practice_rounds);
+
 					// Advance type
 					var field_select = $(`#heat-advance--race-class-${race_class.id}`)
 						.empty();
@@ -868,6 +908,12 @@
 						.prop('value', 1)
 						.text(__('Always'))
 						.appendTo(field_select);
+					if (race_class.round_type != 1) {
+						$(document.createElement('option'))
+							.prop('value', 3)
+							.text(__('Each N Rounds'))
+							.appendTo(field_select);
+					}
 					$(document.createElement('option'))
 						.prop('value', 2)
 						.text(__('After All Rounds'))
@@ -881,6 +927,11 @@
 					field_select
 						.val(race_class.heat_advance_type);
 
+					// Rounds per Batch (visible only when Each N Rounds is selected)
+					$(`#rounds-at-once--race-class-${race_class.id}`)
+						.val(race_class.rounds_at_once);
+					$(`#rounds-at-once--race-class-${race_class.id}`).closest('.field-rounds-at-once')
+						.toggle(race_class.heat_advance_type == 3);
 
 					// Order
 					$(`#order--race-class-${race_class.id}`)
@@ -1245,6 +1296,35 @@
 			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
 			if (race_class) {
 				race_class.heat_advance_type = data.heat_advance_type;
+			}
+			// Show/hide rounds per batch field
+			$(`#rounds-at-once--race-class-${data.class_id}`).closest('.field-rounds-at-once')
+				.toggle(data.heat_advance_type == 3);
+		});
+
+		$(document).on("change", '.set_race_class_rounds_at_once', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				rounds_at_once: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.rounds_at_once = data.rounds_at_once;
+			}
+		});
+
+		$(document).on("change", '.set_race_class_practice_rounds', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				practice_rounds: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.practice_rounds = data.practice_rounds;
 			}
 		});
 

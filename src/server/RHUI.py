@@ -673,7 +673,8 @@ class RHUI():
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
-                'show_init_time_flag': self._racecontext.race.show_init_time_flag
+                'show_init_time_flag': self._racecontext.race.show_init_time_flag,
+                'is_practice': self._racecontext.race.is_practice
             }
         if race_class and race_class.round_type == RoundType.GROUPED and heat:
             emit_payload['next_round'] = heat.group_id + 1
@@ -948,6 +949,7 @@ class RHUI():
                         'format_id': race.format_id,
                         'start_time': race.start_time,
                         'start_time_formatted': race.start_time_formatted,
+                        'out_of_score': race.out_of_score,
                         'pilotraces': pilotraces
                     }
             if rounds:
@@ -1417,6 +1419,8 @@ class RHUI():
             current_class['ranksettings'] = json.loads(race_class.rank_settings) if race_class.rank_settings else None
             current_class['rounds'] = race_class.rounds
             current_class['heat_advance_type'] = race_class.heat_advance_type
+            current_class['rounds_at_once'] = race_class.rounds_at_once
+            current_class['practice_rounds'] = race_class.practice_rounds
             current_class['round_type'] = race_class.round_type
             current_class['order'] = race_class.order
             current_class['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceClass(race_class.id)
@@ -1678,10 +1682,15 @@ class RHUI():
                     emit_payload['next_round'] = heat_data.group_id + 1
                 else:
                     emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_data.id)
+                emit_payload['practice_rounds'] = race_class.practice_rounds
             else:
                 emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_data.id)
+                emit_payload['practice_rounds'] = 0
         else:
             emit_payload['next_round'] = None
+            emit_payload['practice_rounds'] = 0
+
+        emit_payload['is_practice'] = self._racecontext.race.is_practice
 
         if ('nobroadcast' in params):
             emit('current_heat', emit_payload)

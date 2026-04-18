@@ -459,7 +459,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_raceclass_id_by_attribute(name, value)
 
     @callWithDatabaseWrapper
-    def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, round_type=None):
+    def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, round_type=None, rounds_at_once=None, practice_rounds=None):
         #TODO add rank settings
         data = {}
 
@@ -471,6 +471,8 @@ class DatabaseAPI():
             ('rounds', rounds),
             ('heat_advance_type', heat_advance_type),
             ('round_type', round_type),
+            ('rounds_at_once', rounds_at_once),
+            ('practice_rounds', practice_rounds),
             ]:
             if value is not None:
                 data[name] = value
@@ -483,7 +485,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.duplicate_raceClass(source_class_or_id)
 
     @callWithDatabaseWrapper
-    def raceclass_alter(self, raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, round_type=None, rank_settings=None, attributes=None):
+    def raceclass_alter(self, raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, round_type=None, rounds_at_once=None, practice_rounds=None, rank_settings=None, attributes=None):
         data = {}
 
         if isinstance(attributes, dict):
@@ -503,6 +505,8 @@ class DatabaseAPI():
             ('rounds', rounds),
             ('heat_advance', heat_advance_type),
             ('round_type', round_type),
+            ('rounds_at_once', rounds_at_once),
+            ('practice_rounds', practice_rounds),
             ('rank_settings', rank_settings),
             ]:
             if value is not None:
