@@ -107,6 +107,7 @@ class Config:
         self.config['UI']['timeFormat'] = '{m}:{s}.{d}'
         self.config['UI']['timeFormatPhonetic'] = '{m} {s}.{d}'
         self.config['UI']['pilotSort'] = 'name'
+        self.config['UI']['showAllHeats'] = '1'
 
         # timing
         self.config['TIMING']['startThreshLowerAmount'] = '0'

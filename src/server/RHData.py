@@ -1152,8 +1152,15 @@ class RHData():
     def get_heats_by_class(self, class_id):
         return Database.Heat.query.filter_by(class_id=class_id).all()
 
-    def get_recent_heats_by_class(self, class_id, limit):
-        return Database.Heat.query.filter_by(class_id=class_id).order_by(Database.Heat.id.desc()).limit(limit).all()
+    def get_recent_heats_by_class(self, class_id, limit=None, sort_asc=False):
+        query = Database.Heat.query.filter_by(class_id=class_id)
+        if sort_asc:
+            query = query.order_by(Database.Heat.order.asc().nullslast(), Database.Heat.id.asc())
+        else:
+            query = query.order_by(Database.Heat.id.desc())
+        if limit is not None:
+            query = query.limit(limit)
+        return query.all()
 
     def get_first_heat(self):
         return Database.Heat.query.first()

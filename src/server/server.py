@@ -1203,7 +1203,9 @@ def on_expand_heat(data):
 @catchLogExcWithDBWrapper
 def on_get_class_recents(data):
     if data and 'class_id' in data:
-        RaceContext.rhui.emit_recent_heats(data['class_id'], 6) # TODO: Place var in UI Config
+        show_all = RaceContext.serverconfig.get_item_int('UI', 'showAllHeats', 1) != 0
+        limit = None if show_all else 6
+        RaceContext.rhui.emit_recent_heats(data['class_id'], limit, sort_asc=show_all)
 
 @SOCKET_IO.on('add_heat')
 @catchLogExcWithDBWrapper

@@ -1320,7 +1320,7 @@ class RHUI():
         else:
             self._socket.emit('heat_attribute_types', emit_payload)
 
-    def emit_recent_heats(self, class_id, limit, **params):
+    def emit_recent_heats(self, class_id, limit, sort_asc=False, **params):
         '''Emits data of most recent heats class.'''
 
         types = {}
@@ -1329,7 +1329,7 @@ class RHUI():
                 types[attr.name] = attr.field_type
 
         heats = []
-        for heat in self._racecontext.rhdata.get_recent_heats_by_class(class_id, limit):
+        for heat in self._racecontext.rhdata.get_recent_heats_by_class(class_id, limit, sort_asc=sort_asc):
             current_heat = {}
             current_heat['id'] = heat.id
             current_heat['displayname'] = heat.display_name

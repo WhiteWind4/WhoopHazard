@@ -415,6 +415,26 @@
 
 <div class="panel collapsing">
 	<div class="panel-header">
+		<h2>{{ __('Display settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-show-all-heats">{{ __('Heats on Format page') }}</label>
+					<p class="desc">{{ __('Show all heats inline (classic behavior), or only the most recent. Large events may slow down when showing all heats.') }}</p>
+				</div>
+				<select id="set-show-all-heats" class="set-config" data-section="UI" data-key="showAllHeats" data-type="int">
+					<option value="1" {{'selected' if getConfig('UI', 'showAllHeats') in ('1', 1, True)}}>{{ __('Show all heats') }}</option>
+					<option value="0" {{'selected' if getConfig('UI', 'showAllHeats') in ('0', 0, False)}}>{{ __('Show recent heats only') }}</option>
+				</select>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
 		<h2>{{ __('Miscellaneous') }}</h2>
 	</div>
 	<div class="panel-content">
