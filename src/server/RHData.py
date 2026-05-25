@@ -111,12 +111,22 @@ class RHData():
             return False
 
     def do_reset_all(self, nofill, migrateDbApi):
+        # FK-safe order: child tables before parent tables. saved_race_meta has
+        # FKs to heat / race_class / race_format; heat has FK to race_class;
+        # race_class_attribute has FK to race_class. So:
+        #   1) clear_race_data — saved_race_* + lap_split (children of heat/class)
+        #   2) reset_heats    — heat + heat_node + heat_attribute (children of class)
+        #   3) reset_raceClasses — race_class + race_class_attribute
+        # Upstream commit 885204ae tried to fix this but flipped the wrong pair
+        # (put reset_raceClasses ahead of reset_heats) → SQLite throws
+        # `FOREIGN KEY constraint failed` on DELETE FROM race_class. Until that
+        # is fixed upstream, keep the order below.
         self.clear_race_data()
-        self.reset_raceClasses()
         if nofill:
             self.reset_heats(nofill=True)
         else:
             self.reset_heats()
+        self.reset_raceClasses()
         self.reset_pilots()
         self.reset_profiles()
         # (if older DB then co-op race formats will be added after recovery)
