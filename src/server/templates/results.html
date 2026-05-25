@@ -15,9 +15,6 @@
 	];
 
 	$(document).ready(function () {
-		// Lap annotation display setting
-		rotorhazard.show_lap_annotations = localStorage.getItem('show_lap_annotations') !== 'false';
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -407,18 +404,6 @@
 		$(document).on("click", '.clean-cache', function (event) {
 			socket.emit('clean_cache');
 		});
-
-		// Lap annotations toggle
-		function applyAnnotationVisibility() {
-			$('#results').toggleClass('hide-lap-annotations', !rotorhazard.show_lap_annotations);
-		}
-		$('#toggle-lap-annotations').prop('checked', rotorhazard.show_lap_annotations);
-		applyAnnotationVisibility();
-		$('#toggle-lap-annotations').on('change', function() {
-			rotorhazard.show_lap_annotations = $(this).is(':checked');
-			localStorage.setItem('show_lap_annotations', rotorhazard.show_lap_annotations);
-			applyAnnotationVisibility();
-		});
 	});
 </script>
 <main class="page-rounds">
@@ -430,14 +415,7 @@
 	</div>
 </div>
 
-<div id="results-settings" class="panel collapsing">
-	<div class="panel-header"><h3><button class="no-style">{{ __('Display Settings') }}</button></h3></div>
-	<div class="panel-content" style="display:none">
-		<label><input type="checkbox" id="toggle-lap-annotations" checked /> {{ __('Show lap annotations') }}</label>
-	</div>
-</div>
-
-<div id="results">
+<div id="results"{% if getConfig('UI', 'showLapAnnotations') in ('0', 0, False) %} class="hide-lap-annotations"{% endif %}>
 	<p>{{ __('Loading...') }}</p>
 </div>
 

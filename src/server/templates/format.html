@@ -7,6 +7,11 @@
 	// TODO: UI for heat order
 	// TODO: UI for class order
 
+	// Pilots-list rendering mode, read from server config (Advanced Settings →
+	// Display settings → Pilots list view). 'tile' = original card layout;
+	// 'table' = compact spreadsheet with Excel-style arrow navigation.
+	var PILOTS_VIEW_MODE = '{{ "table" if getConfig("UI", "pilotsViewMode") == "table" else "tile" }}';
+
 	var data_dependencies = [
 		'all_languages',
 		'language',
@@ -938,7 +943,14 @@
 						.val(race_class.order)
 
 					// Attributes
+					// ATMOS patch: upstream used .html() which overwrites the
+					// container on every loop iteration — only the LAST
+					// registered class attribute survived in the UI. Two
+					// plugins registering raceclass attributes (e.g. MultiGP +
+					// ATMOS Sync) caused one of them to disappear. Empty once,
+					// then append every field.
 					var attrgroup_el = $(`#attributes--race-class-${race_class.id}`);
+					attrgroup_el.empty();
 					for (var attr_idx in rotorhazard.event.raceclass_attributes) {
 						var raceclass_attr = { ...rotorhazard.event.raceclass_attributes[attr_idx]};
 						raceclass_attr.fieldClass = 'set_raceclass_attr';
@@ -953,7 +965,7 @@
 							raceclass_attr.value = race_class[raceclass_attr.name]
 						}
 
-						attrgroup_el.html(rhui.buildField(raceclass_attr));
+						attrgroup_el.append(rhui.buildField(raceclass_attr));
 					}
 
 					// Heat List
@@ -2588,19 +2600,36 @@
 			socket.emit('activate_heat', data);
 		});
 
+		// Pilot list sort with empty values pushed to the end. A freshly-added
+		// pilot has an empty callsign and name, and the operator wants that
+		// row at the bottom (next to the Add button) rather than alphabetised
+		// to the top by the empty string.
+		function _sortPilotsInPlace(pilots, mode) {
+			function emptyLast(getter) {
+				return function (a, b) {
+					var va = getter(a), vb = getter(b);
+					var ea = va == null || va === '';
+					var eb = vb == null || vb === '';
+					if (ea && eb) return 0;
+					if (ea) return 1;
+					if (eb) return -1;
+					return va.localeCompare(vb, undefined, { sensitivity: 'base' });
+				};
+			}
+			if (mode === 'callsign') {
+				pilots.sort(emptyLast(function (p) { return p.callsign; }));
+			} else if (mode === 'id') {
+				pilots.sort(function (a, b) { return a.pilot_id - b.pilot_id; });
+			} else {
+				pilots.sort(emptyLast(function (p) { return p.name; }));
+			}
+		}
+
 		/* Pilots */
 		socket.on('pilot_list', function (msg) {
 			rotorhazard.event.pilots = msg.pilots;
 			rotorhazard.options.pilotSort = msg.pilotSort;
-
-			if (rotorhazard.options.pilotSort == 'callsign') {
-				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
-			} else if (rotorhazard.options.pilotSort == 'id') {
-				rotorhazard.event.pilots.sort((a, b) => a.pilot_id - b.pilot_id);
-			} else {
-				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-			}
-
+			_sortPilotsInPlace(rotorhazard.event.pilots, rotorhazard.options.pilotSort);
 			display_pilot_selectors();
 		});
 
@@ -2608,19 +2637,15 @@
 			rotorhazard.event.pilot_attributes = msg.attributes;
 			rotorhazard.event.pilots = msg.pilots;
 			rotorhazard.options.pilotSort = msg.pilotSort;
-
-			if (rotorhazard.options.pilotSort == 'callsign') {
-				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
-			} else if (rotorhazard.options.pilotSort == 'id') {
-				rotorhazard.event.pilots.sort((a, b) => a.pilot_id - b.pilot_id);
-			} else {
-				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-			}
+			_sortPilotsInPlace(rotorhazard.event.pilots, rotorhazard.options.pilotSort);
 
 			pilot_selector.seed();
 			display_pilots();
 			display_classes();
 			display_unclassified_heats();
+			// ATMOS patch: scroll to and focus the newly-added row when the
+			// previous click was on Add Pilot.
+			if (typeof _focusAfterPilotData === 'function') _focusAfterPilotData();
 		});
 
 		function display_pilot_selectors() {
@@ -2638,68 +2663,210 @@
 		}
 
 		function display_pilots() {
-			if (rotorhazard.event.pilots) {
-				$(".pilots").empty();
-				for (var i in rotorhazard.event.pilots) {
-					var pilot = rotorhazard.event.pilots[i];
-					if (pilot.pilot_id != 0) {
-						var el = $('<li data-id="' + pilot.pilot_id + '">');
-						el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-						var pilot_name = $('<div class="pilot-info-inline">');
-						pilot_name.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
-						if ('color' in pilot) {
-							pilot_name.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
-							pilot_name.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
-						}
-						el.append(pilot_name);
-						el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-						el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
-						el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
-						var phonetic = $('<div class="pilot-info-inline">');
-						phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
-						phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
-						el.append(phonetic);
-						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+			if (!rotorhazard.event.pilots) return;
+			if (PILOTS_VIEW_MODE === 'table') {
+				display_pilots_table();
+			} else {
+				display_pilots_tile();
+			}
+			display_pilot_selectors();
+		}
 
-						var statusSelect = '<div class="pilot-status"><label for="set_pilot_status_' + pilot.pilot_id + '">' + __('Status') + '</label>' +
-							'<select class="set_pilot_status" id="set_pilot_status_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' +
-							'<option value="0"' + (pilot.status == 0 ? ' selected' : '') + '>' + __('Normal') + '</option>' +
-							'<option value="1"' + (pilot.status == 1 ? ' selected' : '') + '>' + __('Remark') + '</option>' +
-							'<option value="2"' + (pilot.status == 2 ? ' selected' : '') + '>' + __('Disqualified') + '</option>' +
-							'<option value="3"' + (pilot.status == 3 ? ' selected' : '') + '>' + __('Left competition') + '</option>' +
-							'</select></div>';
-						el.append(statusSelect);
-
-						if (!pilot.locked) {
-							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215; </button>');
-						}
-
-						for (var attr_idx in rotorhazard.event.pilot_attributes) {
-							var pilot_attr = { ...rotorhazard.event.pilot_attributes[attr_idx]};
-							pilot_attr.fieldClass = 'set_pilot_attr';
-							pilot_attr.wrapperClass = 'custom_attr';
-							pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
-							pilot_attr.data = {
-								'pilot_id': pilot.pilot_id,
-								'attr': pilot_attr.name,
-							}
-
-							if (pilot_attr.name in pilot) {
-								pilot_attr.value = pilot[pilot_attr.name]
-							}
-
-							el.append(rhui.buildField(pilot_attr));
-						}
-
-						el.appendTo($('.pilots'));
+		function display_pilots_tile() {
+			$(".pilots").empty();
+			for (var i in rotorhazard.event.pilots) {
+				var pilot = rotorhazard.event.pilots[i];
+				if (pilot.pilot_id != 0) {
+					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					var pilot_name = $('<div class="pilot-info-inline">');
+					pilot_name.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+					if ('color' in pilot) {
+						pilot_name.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
+						pilot_name.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
 					}
+					el.append(pilot_name);
+					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+					var phonetic = $('<div class="pilot-info-inline">');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					el.append(phonetic);
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+					var statusSelect = '<div class="pilot-status"><label for="set_pilot_status_' + pilot.pilot_id + '">' + __('Status') + '</label>' +
+						'<select class="set_pilot_status" id="set_pilot_status_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' +
+						'<option value="0"' + (pilot.status == 0 ? ' selected' : '') + '>' + __('Normal') + '</option>' +
+						'<option value="1"' + (pilot.status == 1 ? ' selected' : '') + '>' + __('Remark') + '</option>' +
+						'<option value="2"' + (pilot.status == 2 ? ' selected' : '') + '>' + __('Disqualified') + '</option>' +
+						'<option value="3"' + (pilot.status == 3 ? ' selected' : '') + '>' + __('Left competition') + '</option>' +
+						'</select></div>';
+					el.append(statusSelect);
+
+					if (!pilot.locked) {
+						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215; </button>');
+					}
+
+					for (var attr_idx in rotorhazard.event.pilot_attributes) {
+						var pilot_attr = { ...rotorhazard.event.pilot_attributes[attr_idx]};
+						pilot_attr.fieldClass = 'set_pilot_attr';
+						pilot_attr.wrapperClass = 'custom_attr';
+						pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
+						pilot_attr.data = {
+							'pilot_id': pilot.pilot_id,
+							'attr': pilot_attr.name,
+						}
+
+						if (pilot_attr.name in pilot) {
+							pilot_attr.value = pilot[pilot_attr.name]
+						}
+
+						el.append(rhui.buildField(pilot_attr));
+					}
+
+					el.appendTo($('.pilots'));
+				}
+			}
+
+			$('.pilots').append('<li class="new-pilot-container"><button id="add_pilot">' + __('Add Pilot') + '</button></li>');
+		}
+
+		// Compact spreadsheet view for events with 30+ pilots. The Excel-style
+		// arrow navigation is wired below so cells in the same column align
+		// across rows and Enter saves+moves down.
+		function display_pilots_table() {
+			var $container = $('.pilots');
+			$container.empty();
+			// Re-tag the container so it gets table styling — class list stays
+			// the same so existing selectors still resolve, but adding
+			// `pilots-table-mode` lets the stylesheet narrow rules to this mode.
+			$container.addClass('pilots-table-mode');
+
+			var customAttrs = (rotorhazard.event.pilot_attributes || []);
+
+			// Header rows: built-ins first, then a column per custom attribute
+			// (label as <th> text, description as a hover tooltip via the
+			// `title` attribute so the cell stays free of caption text).
+			var $table = $('<table class="pilot-table">');
+			var $thead = $('<thead><tr></tr></thead>');
+			var $hr = $thead.find('tr');
+			var builtIns = [__('Callsign'), __('Name'), __('Team'), __('Color'), __('Phonetic'), __('Status')];
+			for (var hi in builtIns) $hr.append($('<th>').text(builtIns[hi]));
+			for (var ai in customAttrs) {
+				var attr = customAttrs[ai];
+				var $th = $('<th>').text(attr.label || attr.name);
+				if (attr.desc) $th.attr('title', attr.desc);
+				$hr.append($th);
+			}
+			$hr.append($('<th>')); // actions
+			$table.append($thead);
+			var totalCols = builtIns.length + customAttrs.length + 1;
+
+			var $tbody = $('<tbody>');
+			for (var i in rotorhazard.event.pilots) {
+				var pilot = rotorhazard.event.pilots[i];
+				if (pilot.pilot_id == 0) continue;
+				var $tr = $('<tr data-id="' + pilot.pilot_id + '">');
+
+				$tr.append('<td><input type="text" class="callsign set_pilot_callsign tbl-cell" data-col="callsign" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '"></td>');
+				$tr.append('<td><input type="text" class="set_pilot_name tbl-cell" data-col="name" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '"></td>');
+				$tr.append('<td><select class="set_pilot_team tbl-cell" data-col="team" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></td>');
+				var colorCell = $('<td>');
+				if ('color' in pilot) {
+					colorCell.append('<button class="set_pilot_color color-picker tbl-cell" data-col="color" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '"></button>');
+				}
+				$tr.append(colorCell);
+				$tr.append('<td><input type="text" class="set_pilot_phonetic tbl-cell" data-col="phonetic" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '"></td>');
+
+				var statusOpts = '<option value="0"' + (pilot.status == 0 ? ' selected' : '') + '>' + __('Normal') + '</option>' +
+					'<option value="1"' + (pilot.status == 1 ? ' selected' : '') + '>' + __('Remark') + '</option>' +
+					'<option value="2"' + (pilot.status == 2 ? ' selected' : '') + '>' + __('Disqualified') + '</option>' +
+					'<option value="3"' + (pilot.status == 3 ? ' selected' : '') + '>' + __('Left competition') + '</option>';
+				$tr.append('<td><select class="set_pilot_status tbl-cell" data-col="status" data-pilot_id="' + pilot.pilot_id + '">' + statusOpts + '</select></td>');
+
+				for (var attr_idx in customAttrs) {
+					var pilot_attr = { ...customAttrs[attr_idx] };
+					pilot_attr.fieldClass = 'set_pilot_attr tbl-cell';
+					pilot_attr.wrapperClass = '';
+					pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
+					pilot_attr.data = {
+						'pilot_id': pilot.pilot_id,
+						'attr': pilot_attr.name,
+						'col': 'attr_' + pilot_attr.name,
+					};
+					if (pilot_attr.name in pilot) pilot_attr.value = pilot[pilot_attr.name];
+					// rhui.buildField wraps with a label-block (label + desc)
+					// that we don't want inside the cell — the column header
+					// already shows the label and surfaces the description via
+					// `title`. Pull just the actual editable element out.
+					var $built = rhui.buildField(pilot_attr);
+					var $field = $built.find('input, select, textarea, button').first();
+					if (!$field.length) $field = $built; // unknown type fallback
+					if (pilot_attr.desc) $field.attr('title', pilot_attr.desc);
+					var $attrTd = $('<td>');
+					$attrTd.append($field);
+					$tr.append($attrTd);
 				}
 
-				$('.pilots').append('<li class="new-pilot-container"><button id="add_pilot">' + __('Add Pilot') + '</button></li>');
+				var $delTd = $('<td>');
+				if (!pilot.locked) {
+					$delTd.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
+				}
+				$tr.append($delTd);
 
-				display_pilot_selectors();
+				$tbody.append($tr);
 			}
+			$table.append($tbody);
+
+			var $tfoot = $('<tfoot><tr><td colspan="' + totalCols + '"><button id="add_pilot" class="add-pilot-row">+ ' + __('Add Pilot') + '</button></td></tr></tfoot>');
+			$table.append($tfoot);
+
+			$container.append($table);
 		}
+
+		// Excel-style navigation across .tbl-cell inputs. ArrowUp/Down jump to
+		// the same column in the prev/next row; ArrowLeft/Right move between
+		// columns in the same row when the cursor is at the edge of the text.
+		// Enter triggers blur (saves via existing change handlers) + advances
+		// to the next row, matching the spreadsheet metaphor.
+		$(document).on('keydown', '.tbl-cell', function (e) {
+			var key = e.key;
+			if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
+			var $cell = $(this);
+			var col = $cell.data('col');
+			var $row = $cell.closest('tr');
+			if ($row.length === 0) return;
+			if (key === 'ArrowUp' || key === 'ArrowDown') {
+				e.preventDefault();
+				var $target = (key === 'ArrowUp' ? $row.prev('tr') : $row.next('tr'));
+				if ($target.length === 0) return;
+				var $next = $target.find('.tbl-cell[data-col="' + col + '"]');
+				if ($next.length) { $next.trigger('focus'); if ($next.is('input')) $next.trigger('select'); }
+			} else if (key === 'Enter') {
+				e.preventDefault();
+				$cell.trigger('blur');
+				var $target = $row.next('tr');
+				if ($target.length === 0) return;
+				var $next = $target.find('.tbl-cell[data-col="' + col + '"]');
+				if ($next.length) { $next.trigger('focus'); if ($next.is('input')) $next.trigger('select'); }
+			} else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+				// Only jump cells when the cursor is at the very edge of the
+				// input — otherwise let the user navigate within the text.
+				if ($cell.is('input[type="text"]')) {
+					var atStart = $cell[0].selectionStart === 0 && $cell[0].selectionEnd === 0;
+					var atEnd = $cell[0].selectionStart === $cell.val().length && $cell[0].selectionEnd === $cell.val().length;
+					if (key === 'ArrowLeft' && !atStart) return;
+					if (key === 'ArrowRight' && !atEnd) return;
+				}
+				e.preventDefault();
+				var $cells = $row.find('.tbl-cell');
+				var idx = $cells.index($cell);
+				var nextIdx = key === 'ArrowLeft' ? idx - 1 : idx + 1;
+				var $next = $cells.eq(nextIdx);
+				if ($next.length) { $next.trigger('focus'); if ($next.is('input')) $next.trigger('select'); }
+			}
+		});
 
 		$(document).on("focus", '.set_pilot_name', function(){
 			$(this).select();
@@ -2811,9 +2978,37 @@
 			pilot[pilot_attr] = value;
 		})
 
+		// ATMOS patch: remember that the operator just clicked "Add Pilot" so
+		// the next pilot_data refresh can scroll the new row into view and
+		// focus its name input. Avoids the "new pilot lands at the top, I
+		// have to scroll back down to find the button" complaint for events
+		// with 30+ pilots.
+		var _pilotsTopBeforeAdd = null;
 		$(document).on('click', 'button#add_pilot', function (event) {
+			_pilotsTopBeforeAdd = (rotorhazard.event.pilots || [])
+				.reduce((m, p) => Math.max(m, p.pilot_id || 0), 0);
 			socket.emit('add_pilot');
 		});
+
+		// Whenever a fresh pilot list arrives after Add Pilot, scroll to the
+		// row that wasn't there before and focus its Name input.
+		var _focusAfterPilotData = function() {
+			if (_pilotsTopBeforeAdd == null) return;
+			var threshold = _pilotsTopBeforeAdd;
+			_pilotsTopBeforeAdd = null;
+			var newPilots = (rotorhazard.event.pilots || []).filter(p => p.pilot_id > threshold);
+			if (newPilots.length === 0) return;
+			var newest = newPilots.reduce((acc, p) => p.pilot_id > acc.pilot_id ? p : acc, newPilots[0]);
+			setTimeout(function() {
+				// Tile-view rows are <li>, table-view rows are <tr> — match both.
+				var el = document.querySelector('.pilots [data-id="' + newest.pilot_id + '"]');
+				if (el) {
+					el.scrollIntoView({behavior: 'smooth', block: 'center'});
+					var nameInput = el.querySelector('.set_pilot_name, .set_pilot_callsign');
+					if (nameInput) nameInput.focus();
+				}
+			}, 50);
+		};
 
 		$(document).on("click", '.delete_pilot', function (event) {
 			var data = {

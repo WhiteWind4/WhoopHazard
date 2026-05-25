@@ -429,6 +429,26 @@
 					<option value="0" {{'selected' if getConfig('UI', 'showAllHeats') in ('0', 0, False)}}>{{ __('Show recent heats only') }}</option>
 				</select>
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-show-lap-annotations">{{ __('Lap annotations on results page') }}</label>
+					<p class="desc">{{ __('Highlight review-flagged and out-of-score laps on the public results page. Visible to every viewer.') }}</p>
+				</div>
+				<select id="set-show-lap-annotations" class="set-config" data-section="UI" data-key="showLapAnnotations" data-type="int">
+					<option value="1" {{'selected' if getConfig('UI', 'showLapAnnotations') not in ('0', 0, False)}}>{{ __('Show annotations') }}</option>
+					<option value="0" {{'selected' if getConfig('UI', 'showLapAnnotations') in ('0', 0, False)}}>{{ __('Hide annotations') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-pilots-view-mode">{{ __('Pilots list view') }}</label>
+					<p class="desc">{{ __('Tile = classic card layout. Table = compact spreadsheet view for events with 30+ pilots (Excel-style row navigation).') }}</p>
+				</div>
+				<select id="set-pilots-view-mode" class="set-config" data-section="UI" data-key="pilotsViewMode">
+					<option value="tile" {{'selected' if getConfig('UI', 'pilotsViewMode') != 'table'}}>{{ __('Tile') }}</option>
+					<option value="table" {{'selected' if getConfig('UI', 'pilotsViewMode') == 'table'}}>{{ __('Table') }}</option>
+				</select>
+			</li>
 		</ol>
 	</div>
 </div>

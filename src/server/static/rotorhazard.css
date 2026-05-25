@@ -1589,6 +1589,83 @@ ol.heat-edit-list>li {
 	margin: 0 -0.25em;
 }
 
+/* ATMOS: compact table view for events with 30+ pilots (toggle in
+   Advanced Settings → Display settings → Pilots list view). The flex layout
+   above only applies to tile view, so reset it here. */
+.pilots.pilots-table-mode {
+	display: block;
+	margin: 0;
+}
+
+.pilot-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.85em;
+}
+
+.pilot-table thead th {
+	text-align: left;
+	padding: 0.3em 0.4em;
+	border: 0.0625em solid #b0b4ba;
+	background: #f3f4f5;
+	font-weight: 600;
+	font-size: 0.85em;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+}
+
+/* Excel-style: every cell has a visible grey border at all times so the
+   grid is legible without hovering. Inputs sit flush inside the cell. */
+.pilot-table tbody td {
+	padding: 0;
+	border: 0.0625em solid #d1d3d4;
+	vertical-align: middle;
+	background: #fff;
+}
+
+.pilot-table tbody tr:hover td {
+	background: #f7faff;
+}
+
+.pilot-table .tbl-cell {
+	width: 100%;
+	min-width: 5em;
+	padding: 0.3em 0.45em;
+	margin: 0;
+	border: 0;
+	background: transparent;
+	box-sizing: border-box;
+	font-size: 1em;
+}
+
+.pilot-table .tbl-cell:focus {
+	outline: 0.125em solid #4a90e2;
+	outline-offset: -0.125em;
+	background: #fff;
+}
+
+.pilot-table button.set_pilot_color.tbl-cell {
+	width: 2em;
+	height: 1.8em;
+	min-width: 0;
+	padding: 0;
+	border-radius: 0.25em;
+	cursor: pointer;
+}
+
+.pilot-table button.delete_pilot {
+	padding: 0.2em 0.5em;
+}
+
+.pilot-table tfoot td {
+	padding: 0.5em 0.3em;
+}
+
+.pilot-table .add-pilot-row {
+	width: auto;
+}
+
 .pilots li {
 	width: calc(20% - 0.5em);
 	margin: 0 0.25em 0.5em;
