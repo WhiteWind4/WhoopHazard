@@ -87,11 +87,27 @@ class HeatGeneratorManager():
             logger.error("Generation stage failed or refused to produce output: see log")
             return False
 
+    # ATMOS patch: helper that drops pilots flagged tech_approved='0' from the
+    # auto-seed pool. The atmos_sync plugin registers and maintains that
+    # attribute so the portal-side "Tech Approved" toggle can keep the RH
+    # heat generator in sync. On stock RH (no plugin loaded) the attribute is
+    # absent → default '1' → no pilots are filtered, behaviour unchanged.
+    def _atmos_filter_tech_approved(self, pool_ids):
+        rhdata = self._racecontext.rhdata
+        kept = []
+        for pid in pool_ids:
+            value = rhdata.get_pilot_attribute_value(pid, 'tech_approved', '1')
+            if str(value) == '0':
+                logger.info("Skipping pilot {} from auto-seed: tech_approved=0".format(pid))
+                continue
+            kept.append(pid)
+        return kept
+
     @catchLogExceptionsWrapper
     def apply(self, generator_id, generated_heats, generate_args):
         pilot_pool = []
         filled_pool = False
-        input_class = generate_args.get('input_class')  
+        input_class = generate_args.get('input_class')
         output_class = generate_args.get('output_class')
 
         if output_class is None:
@@ -143,6 +159,8 @@ class HeatGeneratorManager():
                                     for lb_line in class_result['by_race_time']:
                                         pilot_pool.append(lb_line['pilot_id'])
 
+                                    # ATMOS patch: drop tech_approved='0' pilots.
+                                    pilot_pool = self._atmos_filter_tech_approved(pilot_pool)
                                     random.shuffle(pilot_pool)
                                     filled_pool = True
 
@@ -154,11 +172,13 @@ class HeatGeneratorManager():
                                     data['method'] = ProgramMethod.NONE
 
                         else:
-                            # randomly seed 
+                            # randomly seed
                             if filled_pool == False:
                                 for pilot in self._racecontext.rhdata.get_pilots():
                                     pilot_pool.append(pilot.id)
 
+                                # ATMOS patch: drop tech_approved='0' pilots.
+                                pilot_pool = self._atmos_filter_tech_approved(pilot_pool)
                                 random.shuffle(pilot_pool)
                                 filled_pool = True
 
