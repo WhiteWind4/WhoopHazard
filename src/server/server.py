@@ -2592,6 +2592,8 @@ def on_set_race_out_of_score(data):
         RaceContext.pagecache.set_valid(False)
         RaceContext.rhui.emit_result_data()
         RaceContext.rhui.emit_race_list()
+        # Let plugins (atmos_sync) re-push the race with its new scored flag.
+        Events.trigger(Evt.RACE_ALTER, {'race_id': race_id})
 
 @SOCKET_IO.on('set_practice_flag')
 @catchLogExcWithDBWrapper
