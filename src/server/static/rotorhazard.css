@@ -1666,6 +1666,39 @@ ol.heat-edit-list>li {
 	width: auto;
 }
 
+/* ATMOS: dark-mode table — match the rest of the page background instead of
+   washing out into a bright white slab. Cells sit one step lighter than the
+   body so the grid stays legible. */
+@media (prefers-color-scheme: dark) {
+	.pilot-table thead th {
+		background: #333;
+		border-color: #4c4c4c;
+		color: #ddd;
+	}
+
+	.pilot-table tbody td {
+		background: #3a3a3a;
+		border-color: #4c4c4c;
+	}
+
+	.pilot-table tbody tr:hover td {
+		background: #444;
+	}
+
+	.pilot-table .tbl-cell {
+		color: #fff;
+	}
+
+	.pilot-table .tbl-cell:focus {
+		background: #3a3a3a;
+	}
+
+	.pilot-table tfoot td {
+		background: #333;
+		border-color: #4c4c4c;
+	}
+}
+
 .pilots li {
 	width: calc(20% - 0.5em);
 	margin: 0 0.25em 0.5em;
