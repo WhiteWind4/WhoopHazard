@@ -4,12 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## ⚠️ Это vendored upstream — не патчим без необходимости
 
-Этот каталог — third-party RotorHazard. Он используется как backend для платформы ATMOS, которая живёт в `../platform/`. **ATMOS-специфичная логика идёт в плагин** `../platform/rh-plugin/atmos_sync/`, а не в `src/`.
+Этот каталог — third-party RotorHazard. Он используется как backend для платформы ATMOS, которая живёт в `../platform/`. **ATMOS-специфичная логика идёт в плагин** `../plugins/atmos_sync/`, а не в `src/`.
 
 Прежде чем редактировать что-либо под `src/`:
 1. Проверь, можно ли решить задачу через RHAPI в плагине `atmos_sync` (см. `doc/RHAPI.md`, `doc/Plugins.md`).
 2. Если кажется что без правки ядра не обойтись — **спроси у пользователя**, прежде чем менять файл. Опиши, что пробовал в плагине и почему не получилось.
 3. Каждая правка под `src/` — потенциальный merge-конфликт с апстримом и она не попадает в `atmos_sync.zip`.
+
+Список уже существующих патчей, их статус в апстриме и процедура обновления на
+новую версию RotorHazard — в [`PATCHES.md`](PATCHES.md).
 
 Это правило также записано в `../CLAUDE.md`.
 
@@ -108,7 +111,8 @@ The server stores runtime data outside the repo in `~/rh-data/`:
 - `db_bkp/`, `cfg_bkp/` — automatic backups
 
 ### Existing user plugins (reference for developing new plugins)
-The `~/rh-data/plugins/` directory contains several developed plugins that serve as practical examples:
+Плагины живут в `../plugins/` монорепо, а в `~/rh-data/plugins/` лежат симлинки
+на них (их раскладывает `../tools/link-plugins.sh`):
 - `whooptrack_flags` — custom flag/status displays
 - `whooptrack_gates` — gate management
 - `whooptrack_generators` — custom heat generators
