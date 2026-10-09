@@ -1,6 +1,7 @@
-# CLAUDE.md
+# AGENTS.md — WhoopHazard
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Правила работы с этим репозиторием для любого агента. `CLAUDE.md` рядом —
+только указатель сюда.
 
 ## ⚠️ Это vendored upstream — не патчим без необходимости
 
@@ -14,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Список уже существующих патчей, их статус в апстриме и процедура обновления на
 новую версию RotorHazard — в [`PATCHES.md`](PATCHES.md).
 
-Это правило также записано в `../CLAUDE.md`.
+Это правило также записано в `../AGENTS.md` монорепо ATMOS.
 
 ## Project Overview
 
@@ -113,16 +114,17 @@ The server stores runtime data outside the repo in `~/rh-data/`:
 ### Existing user plugins (reference for developing new plugins)
 Плагины живут в `../plugins/` монорепо, а в `~/rh-data/plugins/` лежат симлинки
 на них (их раскладывает `../tools/link-plugins.sh`):
-- `whooptrack_flags` — custom flag/status displays
-- `whooptrack_gates` — gate management
-- `whooptrack_generators` — custom heat generators
-- `whooptrack_reports` — report generation with templates and custom pages
-- `whooptrack_obs` — OBS integration
-- `wt_overlays` — stream overlay pages
-- `wt_screens` — custom screen/UI pages
-- `rh_lap_annotations` — lap annotation system
+- `atmos_sync` — синхронизация с порталом ATMOS
+- `rh_dvr_review` — судейский DVR
+- `whooptrack_generators` — генераторы сеток
+- `whooptrack_overlays`, `wt_overlays` — оверлеи для стрима
+- `whooptrack_reports` — протоколы и отчёты
+- `whooptrack_director` — режиссёрский пульт
+- `whooptrack_gates` — управление створами
+- `whooptrack_obs` — интеграция с OBS
 
-These plugins demonstrate patterns for UI panels, custom pages, static assets, templates, and RHAPI usage.
+Они же — практические примеры UI-панелей, своих страниц, статики, шаблонов и
+работы с RHAPI. Состав и подробности — `../plugins/README.md`.
 
 ## Key API Versions
 - `SERVER_API`: 52

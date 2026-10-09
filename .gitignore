@@ -39,3 +39,6 @@ venv
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Локальная конфигурация агентов
+.claude/
